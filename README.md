@@ -48,5 +48,13 @@ The `serde` feature enables serde support. `Symbol`s are currently serialized as
 from strings. Other formats are unlikely to be supported in the future. If more direct control is
 needed, then a custom serializer/deserializer can be made.
 
-The `sqlx` feature enables support for encoding and decoding `Symbol`s directly from `sqlx` queries
-and fetch results. Similar to `serde`, `Symbol`s are encoded and decoded as `&str`s.
+The `sqlx-*` features enables support for encoding and decoding `Symbol`s directly from `sqlx`
+queries and fetch results. Similar to `serde`, `Symbol`s are encoded and decoded as `&str`s. `sqlx`
+requires a runtime to be selected in order for the crate to compile, so the following separate
+features correspond to `sqlx` runtimes, and you should pick one for the runetime you are using:
+ - `sqlx-actix-native-tls`
+ - `sqlx-async-std-native-tls`
+ - `sqlx-tokio-native-tls`
+ - `sqlx-actix-rustls`
+ - `sqlx-async-std-rustls`
+ - `sqlx-tokio-rustls`

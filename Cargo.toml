@@ -9,7 +9,7 @@ repository = "https://github.com/Cassy343/stock-symbol"
 license = "MIT"
 readme = "README.md"
 
-keywords = ["stock", "string"]
+keywords = ["symbol", "stock", "string"]
 categories = ["data-structures", "compression"]
 
 [dependencies]
@@ -21,9 +21,14 @@ optional = true
 [dependencies.sqlx-core]
 version = "0.6.1"
 default-features = false
-features = ["runtime-tokio-rustls"]
 optional = true
 
 [features]
 default = []
-sqlx = ["dep:sqlx-core"]
+sqlx = ["sqlx-core"]
+sqlx-actix-native-tls = ["sqlx", "sqlx-core/runtime-actix-native-tls"]
+sqlx-async-std-native-tls = ["sqlx", "sqlx-core/runtime-async-std-native-tls"]
+sqlx-tokio-native-tls = ["sqlx", "sqlx-core/runtime-tokio-native-tls"]
+sqlx-actix-rustls = ["sqlx", "sqlx-core/runtime-actix-rustls"]
+sqlx-async-std-rustls = ["sqlx", "sqlx-core/runtime-async-std-rustls"]
+sqlx-tokio-rustls = ["sqlx", "sqlx-core/runtime-tokio-rustls"]
