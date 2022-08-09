@@ -1,6 +1,6 @@
 [package]
 name = "stock-symbol"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Cassy343"]
 
@@ -25,10 +25,4 @@ optional = true
 
 [features]
 default = []
-sqlx = ["sqlx-core"]
-sqlx-actix-native-tls = ["sqlx", "sqlx-core/runtime-actix-native-tls"]
-sqlx-async-std-native-tls = ["sqlx", "sqlx-core/runtime-async-std-native-tls"]
-sqlx-tokio-native-tls = ["sqlx", "sqlx-core/runtime-tokio-native-tls"]
-sqlx-actix-rustls = ["sqlx", "sqlx-core/runtime-actix-rustls"]
-sqlx-async-std-rustls = ["sqlx", "sqlx-core/runtime-async-std-rustls"]
-sqlx-tokio-rustls = ["sqlx", "sqlx-core/runtime-tokio-rustls"]
+sqlx = ["dep:sqlx-core"]
