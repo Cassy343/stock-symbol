@@ -3,7 +3,6 @@
 #![doc = include_str!("../README.md")]
 
 use std::{
-    borrow::Borrow,
     cmp::Ordering,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
@@ -126,13 +125,6 @@ impl Display for Symbol {
 impl AsRef<str> for Symbol {
     #[inline]
     fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl Borrow<str> for Symbol {
-    #[inline]
-    fn borrow(&self) -> &str {
         self.as_str()
     }
 }
@@ -269,28 +261,11 @@ mod serde {
 mod sqlx {
     use super::*;
     use sqlx_core::{
-        database::{Database, HasArguments, HasValueRef},
+        database::{Database, HasValueRef},
         decode::Decode,
-        encode::{Encode, IsNull},
         error::BoxDynError,
+        types::Type,
     };
-
-    impl<'q, DB: Database> Encode<'q, DB> for Symbol
-    where
-        for<'a> &'a str: Encode<'q, DB>,
-    {
-        fn encode_by_ref(&self, buf: &mut <DB as HasArguments<'q>>::ArgumentBuffer) -> IsNull {
-            <&str as Encode<DB>>::encode(self.as_str(), buf)
-        }
-
-        fn produces(&self) -> Option<DB::TypeInfo> {
-            <&str as Encode<DB>>::produces(&self.as_str())
-        }
-
-        fn size_hint(&self) -> usize {
-            <&str as Encode<DB>>::size_hint(&self.as_str())
-        }
-    }
 
     impl<'r, DB: Database> Decode<'r, DB> for Symbol
     where
@@ -299,6 +274,15 @@ mod sqlx {
         fn decode(value: <DB as HasValueRef<'r>>::ValueRef) -> Result<Self, BoxDynError> {
             let value = <&str as Decode<DB>>::decode(value)?;
             Self::from_str(value).map_err(Into::into)
+        }
+    }
+
+    impl<DB: Database> Type<DB> for Symbol
+    where
+        str: Type<DB>,
+    {
+        fn type_info() -> <DB as Database>::TypeInfo {
+            <str as Type<DB>>::type_info()
         }
     }
 }

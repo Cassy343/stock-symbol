@@ -7,9 +7,9 @@ stack-allocated arrays. Note because of its optimized size, `Symbol` implements 
 and should be passed by value rather than by reference.
 
 `Symbol`s can be easily converted from and to `&str`s via [`from_str`](crate::Symbol::from_str) and
-[`as_str`](crate::Symbol::as_str). For convenience, `Symbol` also implements `AsRef<str>`,
-`Borrow<str>`, and `Deref<Target = str>`. Moreover, equality comparison against string types is
-implemented for `Symbol` as well.
+[`as_str`](crate::Symbol::as_str). For convenience, `Symbol` also implements `AsRef<str>`, and
+`Deref<Target = str>`. Moreover, equality comparison against string types is implemented for
+`Symbol` as well.
 
 # Examples
 
