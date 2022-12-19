@@ -118,7 +118,7 @@ impl Debug for Symbol {
 impl Display for Symbol {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        f.pad(self.as_str())
     }
 }
 
@@ -342,5 +342,15 @@ mod tests {
                 assert_eq!(i.cmp(&j), sym1.cmp(&sym2));
             }
         }
+    }
+
+    #[test]
+    fn formatting() {
+        let symbol = Symbol::from_str("FOO").unwrap();
+
+        assert_eq!(format!("{symbol}"), "FOO");
+        assert_eq!(format!("{symbol:<5}"), "FOO  ");
+        assert_eq!(format!("{symbol:>5}"), "  FOO");
+        assert_eq!(format!("{symbol:^5}"), " FOO ");
     }
 }
