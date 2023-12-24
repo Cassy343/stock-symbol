@@ -93,7 +93,7 @@ impl Symbol {
         // does not contain any uninitialized bytes, so it is safe to cast an immutable reference
         // from the latter to the former (see bytemuck). Moreover, NonZeroU64 has an alignment of
         // 8, and [u8; 8] has an alignment of 1, so the created reference is properly aligned.
-        let bytes = unsafe { &*(&self.data as *const NonZeroU64 as *const [u8; 8]) };
+        let bytes = unsafe { &*(&self.data as *const NonZeroU64).cast::<[u8; 8]>() };
 
         let len = usize::from(bytes[7]);
 
