@@ -6,6 +6,7 @@ use std::{
     cmp::Ordering,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
+    hash::{Hash, Hasher},
     num::NonZeroU64,
     ops::Deref,
     ptr, str,
@@ -212,6 +213,232 @@ impl Display for InvalidSymbol {
 
 impl Error for InvalidSymbol {}
 
+/// A stock symbol, or ticker. Unlike `Symbol`, this type can represent strings of any length,
+/// including the empty string.
+#[derive(Clone)]
+pub enum LongSymbol {
+    /// A compact representation of the symbol, stored inline.
+    Inline(Symbol),
+    /// A general representation of the symbol, stored on the heap.
+    Heap(Box<str>),
+}
+
+impl LongSymbol {
+    /// Attempt to convert this long symbol into a regular `Symbol`. If this conversion fails, then
+    /// `None` is returned.
+    #[inline]
+    pub fn to_symbol(&self) -> Option<Symbol> {
+        match self {
+            Self::Inline(symbol) => Some(*symbol),
+            Self::Heap(string) => Symbol::from_str(&**string).ok(),
+        }
+    }
+
+    /// Returns a `&str` representing this symbol as a string.
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Inline(symbol) => symbol.as_str(),
+            Self::Heap(string) => &**string,
+        }
+    }
+}
+
+impl From<Symbol> for LongSymbol {
+    #[inline]
+    fn from(value: Symbol) -> Self {
+        Self::Inline(value)
+    }
+}
+
+impl From<String> for LongSymbol {
+    #[inline]
+    fn from(value: String) -> Self {
+        match Symbol::from_str(value.as_str()) {
+            Ok(symbol) => Self::Inline(symbol),
+            Err(_) => Self::Heap(value.into_boxed_str()),
+        }
+    }
+}
+
+impl From<Box<str>> for LongSymbol {
+    #[inline]
+    fn from(value: Box<str>) -> Self {
+        match Symbol::from_str(&*value) {
+            Ok(symbol) => Self::Inline(symbol),
+            Err(_) => Self::Heap(value),
+        }
+    }
+}
+
+impl From<&str> for LongSymbol {
+    #[inline]
+    fn from(value: &str) -> Self {
+        match Symbol::from_str(value) {
+            Ok(symbol) => Self::Inline(symbol),
+            Err(_) => Self::Heap(Box::from(value)),
+        }
+    }
+}
+
+impl From<LongSymbol> for String {
+    #[inline]
+    fn from(value: LongSymbol) -> Self {
+        match value {
+            LongSymbol::Inline(symbol) => symbol.as_str().to_owned(),
+            LongSymbol::Heap(string) => String::from(string),
+        }
+    }
+}
+
+impl From<LongSymbol> for Box<str> {
+    #[inline]
+    fn from(value: LongSymbol) -> Self {
+        match value {
+            LongSymbol::Inline(symbol) => Box::from(symbol.as_str()),
+            LongSymbol::Heap(string) => string,
+        }
+    }
+}
+
+impl Debug for LongSymbol {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "LongSymbol({})", self.as_str())
+    }
+}
+
+impl Display for LongSymbol {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.pad(self.as_str())
+    }
+}
+
+impl AsRef<str> for LongSymbol {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Deref for LongSymbol {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+
+impl PartialEq<Symbol> for LongSymbol {
+    #[inline]
+    fn eq(&self, other: &Symbol) -> bool {
+        match self {
+            LongSymbol::Inline(symbol) => symbol == other,
+            LongSymbol::Heap(string) => &**string == other,
+        }
+    }
+}
+
+impl PartialEq<LongSymbol> for Symbol {
+    #[inline]
+    fn eq(&self, other: &LongSymbol) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<str> for LongSymbol {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        match self {
+            LongSymbol::Inline(symbol) => symbol == other,
+            LongSymbol::Heap(string) => &**string == other,
+        }
+    }
+}
+
+impl PartialEq<LongSymbol> for str {
+    #[inline]
+    fn eq(&self, other: &LongSymbol) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<String> for LongSymbol {
+    #[inline]
+    fn eq(&self, other: &String) -> bool {
+        match self {
+            LongSymbol::Inline(symbol) => symbol == other,
+            LongSymbol::Heap(string) => &**string == &**other,
+        }
+    }
+}
+
+impl PartialEq<LongSymbol> for String {
+    #[inline]
+    fn eq(&self, other: &LongSymbol) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<&str> for LongSymbol {
+    #[inline]
+    fn eq(&self, other: &&str) -> bool {
+        match self {
+            LongSymbol::Inline(symbol) => symbol == *other,
+            LongSymbol::Heap(string) => &**string == *other,
+        }
+    }
+}
+
+impl PartialEq<LongSymbol> for &str {
+    #[inline]
+    fn eq(&self, other: &LongSymbol) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq for LongSymbol {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Inline(symbol) => symbol == other,
+            Self::Heap(string) => &**string == other,
+        }
+    }
+}
+
+impl Eq for LongSymbol {}
+
+#[inline]
+fn long_symbol_cmp(a: &LongSymbol, b: &LongSymbol) -> Ordering {
+    match (a, b) {
+        (LongSymbol::Inline(a), LongSymbol::Inline(b)) => a.cmp(b),
+        _ => a.as_str().cmp(b.as_str()),
+    }
+}
+
+impl PartialOrd for LongSymbol {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(long_symbol_cmp(self, other))
+    }
+}
+
+impl Ord for LongSymbol {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        long_symbol_cmp(self, other)
+    }
+}
+
+impl Hash for LongSymbol {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(self.as_str(), state)
+    }
+}
+
 #[cfg(feature = "serde")]
 mod serde {
     use super::*;
@@ -255,6 +482,49 @@ mod serde {
             Symbol::from_str(v).map_err(E::custom)
         }
     }
+
+    impl Serialize for LongSymbol {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.as_str())
+        }
+    }
+
+    impl<'de> Deserialize<'de> for LongSymbol {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_str(LongSymbolVisitor)
+        }
+    }
+
+    struct LongSymbolVisitor;
+
+    impl<'de> Visitor<'de> for LongSymbolVisitor {
+        type Value = LongSymbol;
+
+        #[inline]
+        fn expecting(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            f.write_str("A string")
+        }
+
+        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(LongSymbol::from(v))
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(LongSymbol::from(v))
+        }
+    }
 }
 
 #[cfg(feature = "sqlx")]
@@ -285,6 +555,25 @@ mod sqlx {
             <str as Type<DB>>::type_info()
         }
     }
+
+    impl<'r, DB: Database> Decode<'r, DB> for LongSymbol
+    where
+        &'r str: Decode<'r, DB>,
+    {
+        fn decode(value: <DB as HasValueRef<'r>>::ValueRef) -> Result<Self, BoxDynError> {
+            let value = <&str as Decode<DB>>::decode(value)?;
+            Ok(LongSymbol::from(value))
+        }
+    }
+
+    impl<DB: Database> Type<DB> for LongSymbol
+    where
+        str: Type<DB>,
+    {
+        fn type_info() -> <DB as Database>::TypeInfo {
+            <str as Type<DB>>::type_info()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -298,6 +587,8 @@ mod tests {
         assert_eq!(size_of::<Symbol>(), 8);
         assert_eq!(size_of::<Option<Symbol>>(), 8);
         assert_eq!(size_of::<Result<Symbol, InvalidSymbol>>(), 8);
+
+        assert_eq!(size_of::<LongSymbol>(), 16);
     }
 
     #[test]
@@ -306,6 +597,13 @@ mod tests {
         assert!(Symbol::from_str("HSBC.A").is_ok());
         assert!(Symbol::from_str("this is too long").is_err());
         assert!(Symbol::from_str("").is_err());
+
+        assert!(matches!(LongSymbol::from("AAPL"), LongSymbol::Inline(_)));
+        assert!(matches!(
+            LongSymbol::from("this is too long"),
+            LongSymbol::Heap(_)
+        ));
+        assert!(matches!(LongSymbol::from(""), LongSymbol::Heap(_)));
     }
 
     #[test]
@@ -317,6 +615,17 @@ mod tests {
         assert_eq!(sym1, sym2);
         assert_ne!(sym1, sym3);
         assert_ne!(sym2, sym3);
+
+        let lsym1 = LongSymbol::from(sym1);
+        let lsym2 = LongSymbol::Heap(Box::from("ABCDEFG"));
+        let lsym3 = LongSymbol::from(sym3);
+
+        assert_eq!(lsym1, lsym2);
+        assert_eq!(sym1, lsym2);
+        assert_eq!(lsym1, sym2);
+        assert_ne!(sym1, lsym3);
+        assert_ne!(sym2, lsym3);
+        assert_eq!(sym3, lsym3);
     }
 
     #[test]
@@ -330,6 +639,10 @@ mod tests {
         assert_eq!(sym2, str2);
         assert_ne!(sym1, str2);
         assert_ne!(sym2, str1);
+
+        let lsym1 = LongSymbol::from("this is too long");
+        assert_eq!(lsym1, "this is too long");
+        assert_ne!(lsym1, "short");
     }
 
     #[test]
@@ -342,6 +655,29 @@ mod tests {
                 assert_eq!(i.cmp(&j), sym1.cmp(&sym2));
             }
         }
+
+        let long_symbols = [
+            "",
+            "A",
+            "AA",
+            "AB",
+            "ABRACADABRA",
+            "B",
+            "BBB",
+            "BBBBBBBB",
+            "C",
+            "CA",
+            "CALIFORNIA",
+            "CBS",
+            "VERYLONGSYMBOL",
+        ]
+        .map(LongSymbol::from);
+
+        for (i, sym1) in long_symbols.iter().enumerate() {
+            for (j, sym2) in long_symbols.iter().enumerate() {
+                assert_eq!(i.cmp(&j), sym1.cmp(sym2));
+            }
+        }
     }
 
     #[test]
@@ -352,5 +688,11 @@ mod tests {
         assert_eq!(format!("{symbol:<5}"), "FOO  ");
         assert_eq!(format!("{symbol:>5}"), "  FOO");
         assert_eq!(format!("{symbol:^5}"), " FOO ");
+
+        let long_symbol = LongSymbol::from("LONGSYMBOL");
+        assert_eq!(format!("{long_symbol}"), "LONGSYMBOL");
+        assert_eq!(format!("{long_symbol:<16}"), "LONGSYMBOL      ");
+        assert_eq!(format!("{long_symbol:>16}"), "      LONGSYMBOL");
+        assert_eq!(format!("{long_symbol:^16}"), "   LONGSYMBOL   ");
     }
 }
